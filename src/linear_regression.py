@@ -1,7 +1,7 @@
 ''''
-TODO fill in your names:
-group member 1:
-group member 2:
+Fill in your names:
+group member 1: Tom Freudenmann
+group member 2: Jonathan 
 
 '''
 
@@ -10,28 +10,30 @@ import numpy as np
 from torchvision import datasets
 
 # Load the raw MNIST
-X_train = datasets.MNIST('./', train=True, download=True).data.numpy()
-y_train = datasets.MNIST('./', train=True, download=True).targets.numpy()
+X_train: np.ndarray = datasets.MNIST('./data', train=True, download=True).data.numpy()
+y_train: np.ndarray = datasets.MNIST('./data', train=True, download=True).targets.numpy()
 
-X_test = datasets.MNIST('./', train=False, download=True).data.numpy()
-y_test = datasets.MNIST('./', train=False, download=True).targets.numpy()
+X_test: np.ndarray = datasets.MNIST('./data', train=False, download=True).data.numpy()
+y_test: np.ndarray = datasets.MNIST('./data', train=False, download=True).targets.numpy()
 
 # split eval data from train data:
 eval_data_size = 10000
 train_data_size = 50000
 test_data_size = 10000
 
-X_eval = X_train[0:10000, :, :]
-y_eval = y_train[0:10000]
-X_train = X_train[10000:, :, :]
-y_train = y_train[10000:]
+X_eval: np.ndarray = X_train[0:eval_data_size, :, :]
+y_eval: np.ndarray = y_train[0:eval_data_size]
+X_train: np.ndarray = X_train[eval_data_size:, :, :]
+y_train: np.ndarray = y_train[eval_data_size:]
 # As a sanity check, we print out the size of the training and test data.
-print('Training data shape: ', X_train.shape)
-print('Training labels shape: ', y_train.shape)
-print('Evaluation data shape: ', X_eval.shape)
-print('Evaluation labels shape: ', y_eval.shape)
-print('Test data shape: ', X_test.shape)
-print('Test labels shape: ', y_test.shape)
+def print_shapes():
+    print('Training data shape: ', X_train.shape)
+    print('Training labels shape: ', y_train.shape)
+    print('Evaluation data shape: ', X_eval.shape)
+    print('Evaluation labels shape: ', y_eval.shape)
+    print('Test data shape: ', X_test.shape)
+    print('Test labels shape: ', y_test.shape)
+print_shapes()
 
 # Reshape the image data into rows
 # IMPORTANT NOTE:
@@ -41,7 +43,7 @@ print('Test labels shape: ', y_test.shape)
 #matrix with columns as the data points
 
 # Datatype float allows you to subtract images (is otherwise uint8)
-X_train = np.reshape(X_train, (X_train.shape[0], -1)).astype('float')
+X_train = np.reshape(X_train, (X_train.shape[0], -1)).astype('float') # Does 28x28 -> 784
 X_eval = np.reshape(X_eval, (X_eval.shape[0], -1)).astype('float')
 X_test = np.reshape(X_test, (X_test.shape[0], -1)).astype('float')
 print("x shapes:")
@@ -54,12 +56,14 @@ X_test = X_test / 255
 
 # transform to y to one hot encoded vectors:
 # each row is one y vector
-def make_one_hot(v):
+def make_one_hot(v: np.ndarray):
     """
     :param v: vector of the length of the dataset containing class labels from 0 to 9
     :return: a matrix of dim(lenght dataset,10), where the index of the corresponding label is set to one.
     """
-    # TODO
+    v_one_hot = np.zeros((v.shape[0], 10), dtype=np.uint8)
+    for i in range(v.shape[0]):
+        v_one_hot[i, v[i]] = 1    
     return v_one_hot
 
 
@@ -91,23 +95,28 @@ def softmax(x):
     :param x The input dim(batch_size, 10)
     :return Result of the softmax dim(batch_size, 10)
     """
+    # Substitution for causing no numerical instabilities
+    z = x - np.max(x, axis=-1, keepdims=True)
+    
     # Implementation which might cause numerical instabilities
-    result np.exp(x) / np.sum(np.exp(x), axis=-1, keepdims=True)
-    # TODO Implement a numerically stable softmax
+    result = np.exp(z) / np.sum(np.exp(z), axis=-1, keepdims=True)
+    
     return result
 
 
-def get_loss(y_hat, y):
+def get_loss(y_hat: np.ndarray, y: np.ndarray):
     """
     :param y_hat is the output from fully connected layer dim(batch_size,10)
     :param y is labels dim(batch_size,10)
     :return Loss dim(1)
     """
-    # TODO calc the loss:
+    # if 0 in y_hat:
+    #     print("log by 0!")
+    loss = np.sum(-np.sum((1/y.shape[1]) * np.log(y_hat), axis=-1, keepdims=True))
     return loss
 
 
-def get_accuracy(y_hat, y):
+def get_accuracy(y_hat: np.ndarray, y: np.ndarray):
     """
     the accuracy for one image is one if the maximum of y_hat has the same index as the 1 in y
     :param y_hat:  dim(batch_size,10)
@@ -116,16 +125,19 @@ def get_accuracy(y_hat, y):
     """
     acc = 0
     for row_y, row_y_hat in zip(y, y_hat):
-        # TODO calc the accuracy:
+        acc += 1 if row_y.argmax() == row_y_hat.argmax() else 0
     return acc / batch_size
 
 
-def do_network_inference(x):  # over whole batch
+def do_network_inference(x: np.ndarray):  # over whole batch
     """
     :param x: Input dim(batchsize,784)
     :return: Inference output dim(batchsize,10)
     """
     # TODO calculate y_hat without using a loop, note that the numpy has some special features that can be used.
+    z = np.transpose(np.transpose(W)@np.transpose(x)) + b
+    # y_hat = np.apply_along_axis(softmax, axis=-1, arr=z)
+    y_hat = softmax(z)
     return y_hat
 
 
@@ -136,7 +148,7 @@ def get_delta_weights(y_hat, y, x_batch):
     :param x_batch: Input data dim(batchsize,784)
     :return: Delta weights dim(748,10)
     """
-    # TODO calculate delta_w without using a loop, note that the numpy has some special features that can be used.
+    delta_weights = np.transpose(x_batch)@(y_hat - y)
     return delta_weights
 
 
@@ -146,7 +158,8 @@ def get_delta_biases(y_hat, y):
     :param y: Ground truth dim(batchsize,10)
     :return: Delta biases dim(10)
     """
-    # TODO calculate delta_b
+    delta_biases = y_hat - y
+    delta_biases = np.apply_along_axis(np.mean, axis=0, arr=delta_biases)
     return delta_biases
 
 
@@ -157,7 +170,8 @@ def do_parameter_update(delta_w, delta_b, W, b):
     :param W: dim(748,10)
     :param b: dim(10)
     """
-    # TODO update W and b
+    W += delta_w
+    b += delta_b
 
 
 # do training and evaluation
@@ -181,7 +195,7 @@ for epoch in range(epochs):
         do_parameter_update(delta_w, delta_b, W, b)
         mean_train_loss_per_epoch += train_loss
         mean_train_acc_per_epoch += train_accuracy
-        #print("epoch: {0:d} \t iteration {1:d} \t train loss: {2:f}".format(epoch, i,train_loss))
+        # print("epoch: {0:d} \t iteration {1:d} \t train loss: {2:f}".format(epoch, i,train_loss))
 
     mean_train_loss_per_epoch = mean_train_loss_per_epoch / (
         (train_data_size // batch_size))
