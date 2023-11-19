@@ -61,7 +61,7 @@ def make_one_hot(v: np.ndarray):
     :param v: vector of the length of the dataset containing class labels from 0 to 9
     :return: a matrix of dim(lenght dataset,10), where the index of the corresponding label is set to one.
     """
-    v_one_hot = np.zeros((v.shape[0], 10), dtype=np.uint8)
+    v_one_hot = np.zeros((v.shape[0], 10))
     for i in range(v.shape[0]):
         v_one_hot[i, v[i]] = 1    
     return v_one_hot
@@ -110,10 +110,9 @@ def get_loss(y_hat: np.ndarray, y: np.ndarray):
     :param y is labels dim(batch_size,10)
     :return Loss dim(1)
     """
-    # if 0 in y_hat:
-    #     print("log by 0!")
-    loss = np.sum(-np.sum((1/y.shape[1]) * np.log(y_hat), axis=-1, keepdims=True))
-    return loss
+    epsilon = 1e-10
+    loss = -np.sum(y * np.log(y_hat + epsilon)) / y.shape[1]
+    return loss/y.shape[0]
 
 
 def get_accuracy(y_hat: np.ndarray, y: np.ndarray):
@@ -123,6 +122,7 @@ def get_accuracy(y_hat: np.ndarray, y: np.ndarray):
     :param y: dim(batch_size,10)
     :return: mean accuracy dim(1)
     """
+    batch_size = y.shape[0]
     acc = 0
     for row_y, row_y_hat in zip(y, y_hat):
         acc += 1 if row_y.argmax() == row_y_hat.argmax() else 0
@@ -134,9 +134,7 @@ def do_network_inference(x: np.ndarray):  # over whole batch
     :param x: Input dim(batchsize,784)
     :return: Inference output dim(batchsize,10)
     """
-    # TODO calculate y_hat without using a loop, note that the numpy has some special features that can be used.
-    z = np.transpose(np.transpose(W)@np.transpose(x)) + b
-    # y_hat = np.apply_along_axis(softmax, axis=-1, arr=z)
+    z = np.matmul(x, W) + b
     y_hat = softmax(z)
     return y_hat
 
@@ -159,7 +157,7 @@ def get_delta_biases(y_hat, y):
     :return: Delta biases dim(10)
     """
     delta_biases = y_hat - y
-    delta_biases = np.apply_along_axis(np.mean, axis=0, arr=delta_biases)
+    delta_biases = np.mean(delta_biases, axis=0)
     return delta_biases
 
 
@@ -170,9 +168,9 @@ def do_parameter_update(delta_w, delta_b, W, b):
     :param W: dim(748,10)
     :param b: dim(10)
     """
-    W += delta_w
-    b += delta_b
-
+    W = W - learning_rate * delta_w
+    b = b - learning_rate * delta_b
+    return W, b
 
 # do training and evaluation
 mean_eval_losses = []
@@ -192,7 +190,8 @@ for epoch in range(epochs):
         delta_w = get_delta_weights(y_hat, y, x)
         delta_b = get_delta_biases(y_hat, y)
 
-        do_parameter_update(delta_w, delta_b, W, b)
+        W, b = do_parameter_update(delta_w, delta_b, W, b)
+        # print(delta_w, delta_b)
         mean_train_loss_per_epoch += train_loss
         mean_train_acc_per_epoch += train_accuracy
         # print("epoch: {0:d} \t iteration {1:d} \t train loss: {2:f}".format(epoch, i,train_loss))
@@ -205,14 +204,10 @@ for epoch in range(epochs):
           format(epoch, mean_train_loss_per_epoch, mean_train_acc_per_epoch))
 
     # evaluation:
-    mean_eval_loss_per_epoch = 0
-    mean_eval_acc_per_epoch = 0
-    # TODO calculate the evaluation loss and accuracy
-
-    mean_eval_loss_per_epoch = mean_eval_loss_per_epoch / (eval_data_size //
-                                                           batch_size)
-    mean_eval_acc_per_epoch = mean_eval_acc_per_epoch / (
-        (eval_data_size // batch_size))
+    y_hat_eval = do_network_inference(X_eval)
+    mean_eval_loss_per_epoch = get_loss(y_hat_eval, y_eval)
+    mean_eval_acc_per_epoch = get_accuracy(y_hat_eval, y_eval)
+    
     print(
         "epoch:{0:d} \t mean eval loss: {1:f} \t mean eval acc: {2:f}".format(
             epoch, mean_eval_loss_per_epoch, mean_eval_acc_per_epoch))
@@ -223,14 +218,10 @@ for epoch in range(epochs):
     mean_train_accs.append(mean_train_acc_per_epoch)
 
 # testing
-mean_test_loss_per_epoch = 0
-mean_test_acc_per_epoch = 0
-# TODO calculate the test loss and accuracy
+y_hat_test = do_network_inference(X_test)
+mean_test_loss_per_epoch = get_loss(y_hat_test, y_test)
+mean_test_acc_per_epoch = get_accuracy(y_hat_test, y_test)
 
-mean_test_loss_per_epoch = mean_test_loss_per_epoch / (test_data_size //
-                                                       batch_size)
-mean_test_acc_per_epoch = mean_test_acc_per_epoch / (
-    (test_data_size // batch_size))
 print("final test loss: {0:f} \t final test acc: {1:f}".format(
     mean_test_loss_per_epoch, mean_test_acc_per_epoch))
 
