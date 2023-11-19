@@ -111,8 +111,8 @@ def get_loss(y_hat: np.ndarray, y: np.ndarray):
     :return Loss dim(1)
     """
     epsilon = 1e-10
-    loss = -np.sum(y * np.log(y_hat + epsilon)) / y.shape[1]
-    return loss/y.shape[0]
+    loss = -np.sum(y * np.log(y_hat + epsilon))
+    return loss
 
 
 def get_accuracy(y_hat: np.ndarray, y: np.ndarray):
@@ -122,11 +122,10 @@ def get_accuracy(y_hat: np.ndarray, y: np.ndarray):
     :param y: dim(batch_size,10)
     :return: mean accuracy dim(1)
     """
-    batch_size = y.shape[0]
     acc = 0
     for row_y, row_y_hat in zip(y, y_hat):
         acc += 1 if row_y.argmax() == row_y_hat.argmax() else 0
-    return acc / batch_size
+    return acc / y.shape[0]
 
 
 def do_network_inference(x: np.ndarray):  # over whole batch
@@ -134,7 +133,7 @@ def do_network_inference(x: np.ndarray):  # over whole batch
     :param x: Input dim(batchsize,784)
     :return: Inference output dim(batchsize,10)
     """
-    z = np.matmul(x, W) + b
+    z = np.dot(x, W) + b
     y_hat = softmax(z)
     return y_hat
 
@@ -146,7 +145,7 @@ def get_delta_weights(y_hat, y, x_batch):
     :param x_batch: Input data dim(batchsize,784)
     :return: Delta weights dim(748,10)
     """
-    delta_weights = np.transpose(x_batch)@(y_hat - y)
+    delta_weights = x_batch.T@(y_hat - y)
     return delta_weights
 
 
@@ -204,9 +203,26 @@ for epoch in range(epochs):
           format(epoch, mean_train_loss_per_epoch, mean_train_acc_per_epoch))
 
     # evaluation:
-    y_hat_eval = do_network_inference(X_eval)
-    mean_eval_loss_per_epoch = get_loss(y_hat_eval, y_eval)
-    mean_eval_acc_per_epoch = get_accuracy(y_hat_eval, y_eval)
+    # training
+    mean_eval_loss_per_epoch = 0
+    mean_eval_acc_per_epoch = 0
+    for i in range(eval_data_size // batch_size):
+        x, y = get_next_batch(i, batch_size, X_eval, y_eval)
+        y_hat = do_network_inference(x)
+        train_loss = get_loss(y_hat, y)
+        train_accuracy = get_accuracy(y_hat, y)
+        delta_w = get_delta_weights(y_hat, y, x)
+        delta_b = get_delta_biases(y_hat, y)
+
+        W, b = do_parameter_update(delta_w, delta_b, W, b)
+        mean_eval_loss_per_epoch += train_loss
+        mean_eval_acc_per_epoch += train_accuracy
+        # print("epoch: {0:d} \t iteration {1:d} \t train loss: {2:f}".format(epoch, i,train_loss))
+
+    mean_eval_loss_per_epoch = mean_eval_loss_per_epoch / (
+        (eval_data_size // batch_size))
+    mean_eval_acc_per_epoch = mean_eval_acc_per_epoch / (
+        (eval_data_size // batch_size))
     
     print(
         "epoch:{0:d} \t mean eval loss: {1:f} \t mean eval acc: {2:f}".format(
@@ -218,9 +234,25 @@ for epoch in range(epochs):
     mean_train_accs.append(mean_train_acc_per_epoch)
 
 # testing
-y_hat_test = do_network_inference(X_test)
-mean_test_loss_per_epoch = get_loss(y_hat_test, y_test)
-mean_test_acc_per_epoch = get_accuracy(y_hat_test, y_test)
+mean_test_loss_per_epoch = 0
+mean_test_acc_per_epoch = 0
+for i in range(test_data_size // batch_size):
+    x, y = get_next_batch(i, batch_size, X_test, y_test)
+    y_hat = do_network_inference(x)
+    train_loss = get_loss(y_hat, y)
+    train_accuracy = get_accuracy(y_hat, y)
+    delta_w = get_delta_weights(y_hat, y, x)
+    delta_b = get_delta_biases(y_hat, y)
+
+    W, b = do_parameter_update(delta_w, delta_b, W, b)
+    mean_test_loss_per_epoch += train_loss
+    mean_test_acc_per_epoch += train_accuracy 
+    # print("epoch: {0:d} \t iteration {1:d} \t train loss: {2:f}".format(epoch, i,train_loss))
+
+mean_test_loss_per_epoch = mean_test_loss_per_epoch / (
+    (test_data_size // batch_size))
+mean_test_acc_per_epoch = mean_test_acc_per_epoch / (
+    (test_data_size // batch_size))
 
 print("final test loss: {0:f} \t final test acc: {1:f}".format(
     mean_test_loss_per_epoch, mean_test_acc_per_epoch))
