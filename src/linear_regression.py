@@ -112,7 +112,7 @@ def get_loss(y_hat: np.ndarray, y: np.ndarray):
     """
     epsilon = 1e-10
     loss = -np.sum(y * np.log(y_hat + epsilon))
-    return loss
+    return loss / batch_size
 
 
 def get_accuracy(y_hat: np.ndarray, y: np.ndarray):
