@@ -14,12 +14,14 @@ print(os.getcwd())
 # Configuration Parameters
 image_to_attack_path = "data/image_to_attack.npy"
 pretrained_model = "data/lenet_mnist_model.pth"
+plot_title = "Class Specific Attack"
+file_title = "grad_clip"
 use_cuda = True
 learning_rate = 0.01
 max_opt_steps_per_class = 1000
 reg_parameter = 0.01
-# grad_clip = 0.05
-reg_mode = "L1"
+grad_clip = 0.05
+reg_mode = "None"
 
 # Define what device we are using
 print("CUDA Available: ", torch.cuda.is_available())
@@ -171,14 +173,15 @@ for target_class in target_classes:
 #    Todo plot all images in attacked_images with their corresponding classed in addition to the original image.
 #    This should be on Figure
 ###
-for img in attacked_images:
-    # img = torch.clone(img).detach()
-    # img.to(device)
+fig, axs = plt.subplots(3, int(len(attacked_images) / 3), figsize=(15, 15))
+for i, img in enumerate(attacked_images):
+    ax = axs[i // 3, i % 3]
     cpu_img = img.detach().cpu()
-    plt.imshow(cpu_img.squeeze(), cmap="gray")
-    plt.title(f"True Class: {label_of_image_to_attack}, Predicted Class: {torch.argmax(model(img)).item()}")
-    plt.xticks([], [])
-    plt.yticks([], [])
-    plt.savefig(f"src/plots/ClassSpecificAttack_{label_of_image_to_attack}_{torch.argmax(model(img)).item()}.png")
-    plt.show()
+    ax.imshow(cpu_img.squeeze(), cmap="gray")
+    ax.set_title(f"True Class: {label_of_image_to_attack}, Predicted Class: {torch.argmax(model(img)).item()}")
+    ax.set_xticks([], [])
+    ax.set_yticks([], [])
+fig.suptitle(plot_title + f" with {reg_mode} regularization")
+plt.savefig(f"src/plots/{file_title}_{reg_mode}.png")
+plt.show()
 
