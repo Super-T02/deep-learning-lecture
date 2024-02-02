@@ -19,6 +19,7 @@ h5py = "^3.10.0"
 imgaug = "^0.4.0"
 tqdm = "^4.66.1"
 opencv-python = "^4.9.0.80"
+seaborn = "^0.13.2"
 
 [build-system]
 requires = ["poetry-core", "torch", "torchvision"]
